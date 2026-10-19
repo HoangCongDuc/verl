@@ -15,6 +15,7 @@
 # limitations under the License.
 from __future__ import annotations
 
+import base64
 import logging
 import multiprocessing as mp
 import os
@@ -348,10 +349,13 @@ class ServerAdapter(BaseRollout):
                 serialize_peft_config, serialize_named_tensors = self.wrap_lora_params(peft_config, weights)
                 from sglang.srt.managers.io_struct import LoadLoRAAdapterFromTensorsReqInput
 
+                if "serialized_tensors" in LoadLoRAAdapterFromTensorsReqInput.__dataclass_fields__:
+                    # sglang < 0.5.18 takes one base64 string; each TP worker slices the adapter itself.
+                    tensors_field = {"serialized_tensors": base64.b64encode(serialize_named_tensors[0]).decode("utf-8")}
+                else:
+                    tensors_field = {"serialized_named_tensors": serialize_named_tensors}
                 req = LoadLoRAAdapterFromTensorsReqInput(
-                    lora_name=SGLANG_LORA_NAME,
-                    config_dict=serialize_peft_config,
-                    serialized_named_tensors=serialize_named_tensors,
+                    lora_name=SGLANG_LORA_NAME, config_dict=serialize_peft_config, **tensors_field
                 )
                 # send http request
                 await self._engine.load_lora_adapter_from_tensor(req)

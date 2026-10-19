@@ -790,15 +790,14 @@ class AsyncHttpServerAdapter(HttpServerAdapter):
     async def load_lora_adapter_from_tensor(self, req):
         import base64
 
-        # Base64 like update_weights_from_tensor above: the field is List[bytes], JSON has none.
-        serialized_named_tensors = [base64.b64encode(t).decode("utf-8") for t in req.serialized_named_tensors]
+        if hasattr(req, "serialized_tensors"):  # sglang < 0.5.18: already one base64 string
+            tensors_field = {"serialized_tensors": req.serialized_tensors}
+        else:
+            # Base64 like update_weights_from_tensor above: the field is List[bytes], JSON has none.
+            tensors_field = {"serialized_named_tensors": [base64.b64encode(t).decode("utf-8") for t in req.serialized_named_tensors]}
         return await self._make_async_request(
             "load_lora_adapter_from_tensors",
-            {
-                "lora_name": req.lora_name,
-                "config_dict": req.config_dict,
-                "serialized_named_tensors": serialized_named_tensors,
-            },
+            {"lora_name": req.lora_name, "config_dict": req.config_dict, **tensors_field},
         )
 
     async def unload_lora_adapter(self, lora_name: str):
