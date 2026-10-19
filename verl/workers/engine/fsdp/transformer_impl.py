@@ -1414,7 +1414,7 @@ class FSDPEngineWithLMHead(FSDPEngine):
                     cu_seqlens = input_ids.offsets()
                     for k, v in outputs.items():
                         v = v.squeeze(0)
-                        assert v.shape == (logits_rmpad.shape[0],), (
+                        assert v.shape[0] == logits_rmpad.shape[0], (
                             f"logits_rmpad len: {logits_rmpad.shape[0]}, {k} shape: {v.shape}"
                         )
                         v = self._gather_and_unpad_packed(v, output_args["pad_size"])
